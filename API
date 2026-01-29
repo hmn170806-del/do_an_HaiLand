@@ -1,0 +1,85 @@
+//1
+<?php
+// api_get_products.php
+header("Content-Type: application/json");
+require "db.php";
+
+$sql = "SELECT id, name, price, image, category FROM products ORDER BY id DESC LIMIT 10";
+$result = mysqli_query($conn, $sql);
+
+$data = [];
+while ($row = mysqli_fetch_assoc($result)) {
+    $data[] = $row;
+}
+
+// Xuất dữ liệu ra dạng JSON để PHP ở trang khác hoặc JavaScript có thể đọc
+echo json_encode($data);
+?>
+//2
+<?php
+// api_search.php
+header("Content-Type: application/json");
+require "db.php";
+
+// Lấy từ khóa tìm kiếm từ phương thức GET
+$keyword = isset($_GET['keyword']) ? mysqli_real_escape_string($conn, $_GET['keyword']) : '';
+
+if ($keyword !== '') {
+    $sql = "SELECT id, name, price, image FROM products WHERE name LIKE '%$keyword%' LIMIT 5";
+} else {
+    // Nếu không có từ khóa, trả về mảng rỗng hoặc sản phẩm mới nhất
+    $sql = "SELECT id, name, price, image FROM products ORDER BY id DESC LIMIT 5";
+}
+
+$result = mysqli_query($conn, $sql);
+$data = [];
+
+while ($row = mysqli_fetch_assoc($result)) {
+    $data[] = $row;
+}
+
+echo json_encode($data);
+?>
+//3
+<?php
+// view_api.php
+// 1. Cấu hình URL của API (Sửa lại đúng đường dẫn localhost của bạn)
+$api_url = "http://localhost/db_hailand/api_get_products.php";
+
+// 2. Khởi tạo cURL để gọi API
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $api_url);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = curl_exec($ch);
+curl_close($ch);
+
+// 3. Chuyển JSON thành mảng PHP để xử lý
+$products = json_decode($response, true);
+?>
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h2 class="section-title">DỮ LIỆU GỌI TỪ API</h2>
+        <div class="product-grid">
+            <?php if (!empty($products)): ?>
+                <?php foreach ($products as $item): ?>
+                    <div class="product-card">
+                        <img src="uploads/<?= $item['image'] ?>" alt="">
+                        <div class="p-info">
+                            <h3><?= $item['name'] ?></h3>
+                            <p class="price"><?= number_format($item['price'], 0, ',', '.') ?> đ</p>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <p>Không thể kết nối API hoặc không có dữ liệu.</p>
+            <?php endif; ?>
+        </div>
+    </div>
+</body>
+</html>
