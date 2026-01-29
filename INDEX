@@ -1,0 +1,314 @@
+<?php
+session_start(); // BẮT BUỘC: Phải đặt ở dòng đầu tiên
+require "db.php";
+
+// 1. XỬ LÝ LOGIC LỌC VÀ TÌM KIẾM
+$search = isset($_GET['search']) ? mysqli_real_escape_string($conn, $_GET['search']) : '';
+$category = isset($_GET['category']) ? mysqli_real_escape_string($conn, $_GET['category']) : '';
+
+// Xây dựng câu lệnh SQL linh hoạt
+$sql = "SELECT * FROM products WHERE 1=1";
+
+if ($search != '') { 
+    $sql .= " AND name LIKE '%$search%'"; 
+}
+
+if ($category != '') { 
+    $sql .= " AND category = '$category'"; 
+}
+
+$sql .= " ORDER BY id DESC LIMIT 12";
+$result = mysqli_query($conn, $sql);
+?>
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>hailand - Mua Bán Đồ Cũ</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        /* 1. Header Layout Mới */
+        .header-grid {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        /* 2. Nút Đăng nhập/Đăng ký góc phải */
+        .auth-buttons {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .btn-login, .btn-register {
+            padding: 8px 15px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 14px;
+            transition: 0.3s;
+        }
+        .btn-login {
+            border: 1px solid #1e3a8a;
+            color: #1e3a8a;
+            background: white;
+        }
+        .btn-register {
+            background: #1e3a8a;
+            color: white;
+            border: 1px solid #1e3a8a;
+        }
+        .btn-login:hover { background: #f0f0f0; }
+        .btn-register:hover { background: #162c6b; }
+        
+        .user-welcome {
+            font-weight: bold;
+            color: #333;
+            margin-right: 10px;
+        }
+
+        /* 3. Modal Popup Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 9999;
+            display: none; /* Mặc định ẩn */
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            width: 400px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            animation: slideDown 0.4s ease;
+            position: relative;
+        }
+        .close-btn {
+            position: absolute;
+            top: 10px; right: 15px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #aaa;
+        }
+        .modal-actions { margin-top: 20px; }
+        .btn-modal {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            box-sizing: border-box;
+        }
+        .bg-blue { background: #1e3a8a; color: white; }
+        .bg-green { background: #28a745; color: white; }
+        
+        @keyframes slideDown {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <div class="container">
+            <div class="top-bar-content">
+                <span>hailand xin chào! <i class="fas fa-phone"></i> Hotline: 0123456789</span>
+            </div>
+        </div>
+    </div>
+
+    <header class="main-header">
+        <div class="container header-grid">
+            <div class="logo">
+                <a href="index.php">
+                    <img src="uploads/logo_hailand.png.png" alt="hailand Logo" style="height: 100px;">
+                </a>
+            </div>
+            
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="index.php" class="active">Trang chủ</a></li>
+                    <li><a href="add_product.php" class="need-login">Đăng tin ngay</a></li>
+                    <li><a href="profile.php" class="need-login">Cá nhân</a></li>
+                </ul>
+            </nav>
+
+            <div class="auth-buttons">
+                <?php if (isset($_SESSION['user_id'])): ?>
+                    <span class="user-welcome"><i class="fas fa-user"></i> Chào, <?= htmlspecialchars($_SESSION['name']) ?></span>
+                    <a href="logout.php" style="color: red; text-decoration: none; font-size: 14px;">(Thoát)</a>
+                <?php else: ?>
+                    <a href="login.php" class="btn-login">Đăng nhập</a>
+                    <a href="register.php" class="btn-register">Đăng ký</a>
+                <?php endif; ?>
+            </div>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <img src="uploads/logo_hailand.png.png" alt="Banner hailand" class="hero-logo">
+                <h2>MUA BÁN ĐỒ CŨ</h2>
+                <p class="sub-text">ĐỒ CAO CẤP, ĐÃ QUA SỬ DỤNG</p>
+                <h3 class="slogan">“Mua của người chán, Bán cho người cần”</h3>
+            </div>
+        </div>
+    </section>
+
+    <div class="container">
+        <div class="search-wrapper">
+            <form action="index.php" method="GET" class="search-box">
+                <input type="text" name="search" placeholder="Bạn muốn tìm sản phẩm nào?" value="<?= htmlspecialchars($search) ?>">
+                <button type="submit"><i class="fas fa-search"></i> Tìm kiếm</button>
+            </form>
+        </div>
+
+        <div class="categories">
+            <h3 class="title-left">Danh mục phổ biến</h3>
+            <div class="cat-list">
+                <a href="index.php?category=Dien thoai" class="cat-card need-login <?= ($category == 'Dien thoai') ? 'active' : '' ?>">
+                    <i class="fas fa-mobile-alt"></i><span>Điện thoại</span>
+                </a>
+                <a href="index.php?category=Laptop" class="cat-card need-login <?= ($category == 'Laptop') ? 'active' : '' ?>">
+                    <i class="fas fa-laptop"></i><span>Laptop</span>
+                </a>
+                <a href="index.php?category=May anh" class="cat-card need-login <?= ($category == 'May anh') ? 'active' : '' ?>">
+                    <i class="fas fa-camera"></i><span>Máy ảnh</span>
+                </a>
+                <a href="index.php?category=Dong ho" class="cat-card need-login <?= ($category == 'Dong ho') ? 'active' : '' ?>">
+                    <i class="fas fa-clock"></i><span>Đồng hồ</span>
+                </a>
+            </div>
+        </div>
+
+        <section class="main-products">
+            <div class="flex-between">
+                <h2 class="section-title">
+                    <?php 
+                        if($search) echo "KẾT QUẢ CHO: '" . htmlspecialchars($search) . "'";
+                        elseif($category) echo "DANH MỤC: " . strtoupper($category);
+                        else echo "TIN ĐĂNG MỚI";
+                    ?>
+                </h2>
+                <?php if($search || $category): ?>
+                    <a href="index.php" class="reset-link"><i class="fas fa-sync-alt"></i> Làm mới</a>
+                <?php endif; ?>
+            </div>
+
+            <div class="product-grid">
+                <?php if (mysqli_num_rows($result) > 0): ?>
+                    <?php while ($row = mysqli_fetch_assoc($result)): ?>
+                        <div class="product-card">
+                            <div class="img-container">
+                                <?php 
+                                    $images = explode(',', $row['image']);
+                                    $first_image = trim($images[0]);
+                                    $image_path = "uploads/" . $first_image;
+                                    
+                                    // Thêm class need-login vào link ảnh
+                                    echo '<a href="product_detail.php?id='.$row['id'].'" class="need-login">';
+                                    if (!empty($first_image) && file_exists($image_path)) {
+                                        echo '<img src="'.$image_path.'" alt="'.htmlspecialchars($row['name']).'">';
+                                    } else {
+                                        echo '<img src="https://via.placeholder.com/300x200?text=No+Image" alt="No Image">';
+                                    }
+                                    echo '</a>';
+                                ?>
+                                <span class="tag"><?= htmlspecialchars($row['category'] ?? 'Sản phẩm') ?></span>
+                            </div>
+                            <div class="p-info">
+                                <h3><a href="product_detail.php?id=<?= $row['id'] ?>" class="need-login" style="text-decoration: none; color: inherit;"><?= htmlspecialchars($row['name']) ?></a></h3>
+                                <p class="price"><?= number_format($row['price'], 0, ',', '.') ?> đ</p>
+                                <p class="location"><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($row['province'] ?? 'Toàn quốc') ?></p>
+                                <a href="product_detail.php?id=<?= $row['id'] ?>" class="btn-detail need-login">Xem chi tiết</a>
+                            </div>
+                        </div>
+                    <?php endwhile; ?>
+                <?php else: ?>
+                    <div class="no-data-box" style="grid-column: 1/-1; text-align: center; padding: 50px;">
+                        <p class="no-data">Không tìm thấy sản phẩm phù hợp.</p>
+                        <a href="index.php" class="btn-detail">Xem tất cả sản phẩm</a>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </section>
+    </div>
+
+    <footer style="text-align: center; padding: 50px 0; color: #888; background: #fff; border-top: 1px solid #eee; margin-top: 50px;">
+        <p>&copy; 2026 hailand - Mua Bán Đồ Cũ Cao Cấp</p>
+    </footer>
+
+    <div id="loginModal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <h3 id="modalTitle" style="color: #1e3a8a;">Thông báo</h3>
+            <p id="modalMessage" style="color: #555; margin: 15px 0;">Bạn cần đăng nhập để thực hiện chức năng này!</p>
+            
+            <div class="modal-actions">
+                <p style="font-size: 14px; color: #888;">Bạn đã có tài khoản chưa?</p>
+                <a href="login.php" class="btn-modal bg-green">Đăng nhập ngay</a>
+                <a href="register.php" class="btn-modal bg-blue">Đăng ký tài khoản mới</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Lấy trạng thái đăng nhập từ PHP
+        const isLoggedIn = <?php echo isset($_SESSION['user_id']) ? 'true' : 'false'; ?>;
+
+        // Hàm mở Modal
+        function showModal(message) {
+            document.getElementById('modalMessage').innerText = message;
+            document.getElementById('loginModal').style.display = 'flex';
+        }
+
+        // Hàm đóng Modal
+        function closeModal() {
+            document.getElementById('loginModal').style.display = 'none';
+        }
+
+        // Đóng modal khi click ra ngoài
+        window.onclick = function(event) {
+            const modal = document.getElementById('loginModal');
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        // --- LOGIC CHÍNH ---
+        document.addEventListener("DOMContentLoaded", function() {
+            
+            if (!isLoggedIn) {
+                // 1. Chặn click vào các Link có class "need-login" (Danh mục, Sản phẩm)
+                const restrictedLinks = document.querySelectorAll('.need-login');
+                
+                restrictedLinks.forEach(link => {
+                    link.addEventListener('click', function(e) {
+                        e.preventDefault(); // Ngưng chuyển trang
+                        showModal("Bạn cần đăng nhập để xem chi tiết hoặc danh mục này!");
+                    });
+                });
+
+                // 2. Tự động hiện Popup sau 2 phút (120000 ms)
+                setTimeout(() => {
+                    showModal("Bạn đã ghé thăm được một lúc. Hãy đăng nhập để có trải nghiệm tốt nhất nhé!");
+                }, 120000); 
+            }
+        });
+    </script>
+
+</body>
+</html>
