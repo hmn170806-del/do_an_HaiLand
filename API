@@ -46,13 +46,6 @@ echo json_encode($data);
 // 1. Cấu hình URL của API (Sửa lại đúng đường dẫn localhost của bạn)
 $api_url = "http://localhost/db_hailand/api_get_products.php";
 
-// 2. Khởi tạo cURL để gọi API
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, $api_url);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-$response = curl_exec($ch);
-curl_close($ch);
-
 // 3. Chuyển JSON thành mảng PHP để xử lý
 $products = json_decode($response, true);
 ?>
