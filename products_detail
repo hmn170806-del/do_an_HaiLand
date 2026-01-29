@@ -1,0 +1,170 @@
+<?php 
+require "db.php"; 
+
+$id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+
+// Truy vấn thông tin sản phẩm và người bán
+$sql = "SELECT p.*, u.fullname AS seller_name, u.phone AS seller_phone 
+        FROM products p 
+        LEFT JOIN users u ON p.user_id = u.id 
+        WHERE p.id = $id";
+
+$result = mysqli_query($conn, $sql);
+$product = mysqli_fetch_assoc($result);
+
+if (!$product) {
+    header("Location: index.php");
+    exit();
+}
+
+// XỬ LÝ CHUỖI ẢNH: Đảm bảo loại bỏ khoảng trắng thừa
+$images_raw = !empty($product['image']) ? explode(',', $product['image']) : [];
+$images = array_map('trim', $images_raw); // Xóa khoảng trắng từng tên file
+$first_image = count($images) > 0 ? $images[0] : 'placeholder.png';
+?>
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= htmlspecialchars($product['name']) ?> - hailand</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* CSS bổ sung để trang hoàn thiện hơn */
+        .thumb { transition: all 0.2s ease; opacity: 0.7; }
+        .thumb:hover { opacity: 1; transform: scale(1.05); }
+        .thumb.active { opacity: 1; border-color: #1e3a8a !important; }
+        
+        .btn-call-new:hover { background: #152a61 !important; }
+        .btn-zalo-new:hover { background: #f0f4ff !important; }
+        
+        @media (max-width: 768px) {
+            .detail-wrapper { grid-template-columns: 1fr !important; }
+            .slideshow-container { height: 300px !important; }
+        }
+    </style>
+</head>
+<body style="background-color: #f4f7f6;">
+
+    <header class="main-header">
+        <div class="container header-grid">
+            <div class="logo">
+                <a href="index.php"><img src="uploads/logo_hailand.png.png" alt="hailand" style="height: 45px;"></a>
+            </div>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="index.php">Trang chủ</a></li>
+                    <li><a href="add_product.php">Đăng tin ngay</a></li>
+                    <li><a href="profile.php">Cá nhân</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container" style="margin-top: 30px; margin-bottom: 50px;">
+        <div class="detail-wrapper" style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 30px;">
+            
+            <div class="detail-gallery-card">
+                <div class="slideshow-container" style="position: relative; background: #fff; border-radius: 12px; overflow: hidden; height: 450px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+                    <img id="main-view" src="uploads/<?= htmlspecialchars($first_image) ?>" alt="Product Image" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                    
+                    <?php if(count($images) > 1): ?>
+                        <button class="prev" onclick="changeSlide(-1)" style="position: absolute; left: 10px; background: rgba(0,0,0,0.5); color: white; border: none; width: 40px; height: 40px; cursor: pointer; border-radius: 50%; display: flex; align-items: center; justify-content: center;"><i class="fas fa-chevron-left"></i></button>
+                        <button class="next" onclick="changeSlide(1)" style="position: absolute; right: 10px; background: rgba(0,0,0,0.5); color: white; border: none; width: 40px; height: 40px; cursor: pointer; border-radius: 50%; display: flex; align-items: center; justify-content: center;"><i class="fas fa-chevron-right"></i></button>
+                    <?php endif; ?>
+                </div>
+
+                <div class="thumbnails-row" style="display: flex; gap: 10px; margin-top: 15px; overflow-x: auto; padding-bottom: 10px;">
+                    <?php foreach ($images as $index => $img): ?>
+                        <img src="uploads/<?= htmlspecialchars($img) ?>" 
+                             class="thumb <?= $index === 0 ? 'active' : '' ?>" 
+                             onclick="currentSlide(this, <?= $index ?>)"
+                             style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 2px solid <?= $index === 0 ? '#1e3a8a' : 'transparent' ?>;">
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
+            <div class="detail-sidebar">
+                <div class="info-card" style="background: #fff; padding: 25px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                    <span class="detail-tag" style="background: #e5e7eb; padding: 4px 12px; border-radius: 20px; font-size: 12px; color: #4b5563; font-weight: bold;">Đồ cũ</span>
+                    <h1 class="p-title" style="font-size: 24px; margin: 15px 0; color: #1f2937;"><?= htmlspecialchars($product['name']) ?></h1>
+                    <p class="p-price" style="font-size: 22px; color: #dc2626; font-weight: bold;"><?= number_format($product['price'], 0, ',', '.') ?> đ</p>
+                    <div class="p-meta" style="color: #6b7280; font-size: 14px; margin-top: 10px;">
+                        <span style="margin-right: 15px;"><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($product['province'] ?? 'Toàn quốc') ?></span>
+                        <span><i class="far fa-clock"></i> Cập nhật ngay</span>
+                    </div>
+                </div>
+
+                <div class="info-card seller-box" style="background: #fff; padding: 25px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                    <h3 style="font-size: 16px; margin-bottom: 15px; color: #374151;">Thông tin người bán</h3>
+                    <div class="seller-profile" style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+                        <div class="s-avatar" style="font-size: 45px; color: #d1d5db;"><i class="fas fa-user-circle"></i></div>
+                        <div class="s-info">
+                            <p class="s-name" style="font-weight: bold; color: #111827; margin: 0;"><?= htmlspecialchars($product['seller_name'] ?? 'Người dùng Hailand') ?></p>
+                            <p class="s-status" style="font-size: 13px; color: #059669; margin: 0;"><i class="fas fa-check-circle"></i> Đối tác đã xác thực</p>
+                        </div>
+                    </div>
+                    <div class="btn-group" style="display: flex; gap: 10px;">
+                        <a href="tel:<?= $product['seller_phone'] ?>" class="btn-call-new" style="flex: 1; background: #1e3a8a; color: #fff; text-align: center; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: bold; transition: 0.3s;">
+                            <i class="fas fa-phone-alt"></i> Gọi điện
+                        </a>
+                        <a href="https://zalo.me/<?= $product['seller_phone'] ?>" target="_blank" class="btn-zalo-new" style="flex: 1; border: 1px solid #1e3a8a; color: #1e3a8a; text-align: center; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: bold; transition: 0.3s;">
+                             Chat Zalo
+                        </a>
+                    </div>
+                </div>
+
+                <div class="info-card" style="background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                    <h3 style="font-size: 16px; margin-bottom: 15px; color: #374151;">Mô tả chi tiết</h3>
+                    <p class="p-desc" style="color: #4b5563; line-height: 1.6; white-space: pre-wrap;"><?= htmlspecialchars($product['description']) ?></p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const images = <?= json_encode($images) ?>;
+        let currentIndex = 0;
+
+        function currentSlide(element, index) {
+            currentIndex = index;
+            document.getElementById('main-view').src = element.src;
+            
+            // Cập nhật class active cho thumbnails
+            const thumbnails = document.querySelectorAll('.thumb');
+            thumbnails.forEach(t => {
+                t.classList.remove('active');
+                t.style.borderColor = "transparent";
+            });
+            element.classList.add('active');
+            element.style.borderColor = "#1e3a8a";
+        }
+
+        function changeSlide(direction) {
+            if (images.length <= 1) return;
+            
+            currentIndex += direction;
+            if (currentIndex >= images.length) currentIndex = 0;
+            if (currentIndex < 0) currentIndex = images.length - 1;
+            
+            const newSrc = "uploads/" + images[currentIndex];
+            document.getElementById('main-view').src = newSrc;
+
+            // Đồng bộ thumbnail khi bấm nút Next/Prev
+            const thumbnails = document.querySelectorAll('.thumb');
+            thumbnails.forEach((t, i) => {
+                if(i === currentIndex) {
+                    t.classList.add('active');
+                    t.style.borderColor = "#1e3a8a";
+                    t.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                } else {
+                    t.classList.remove('active');
+                    t.style.borderColor = "transparent";
+                }
+            });
+        }
+    </script>
+</body>
+</html>
