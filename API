@@ -15,31 +15,7 @@ while ($row = mysqli_fetch_assoc($result)) {
 // Xuất dữ liệu ra dạng JSON để PHP ở trang khác hoặc JavaScript có thể đọc
 echo json_encode($data);
 ?>
-//2
-<?php
-// api_search.php
-header("Content-Type: application/json");
-require "db.php";
 
-// Lấy từ khóa tìm kiếm từ phương thức GET
-$keyword = isset($_GET['keyword']) ? mysqli_real_escape_string($conn, $_GET['keyword']) : '';
-
-if ($keyword !== '') {
-    $sql = "SELECT id, name, price, image FROM products WHERE name LIKE '%$keyword%' LIMIT 5";
-} else {
-    // Nếu không có từ khóa, trả về mảng rỗng hoặc sản phẩm mới nhất
-    $sql = "SELECT id, name, price, image FROM products ORDER BY id DESC LIMIT 5";
-}
-
-$result = mysqli_query($conn, $sql);
-$data = [];
-
-while ($row = mysqli_fetch_assoc($result)) {
-    $data[] = $row;
-}
-
-echo json_encode($data);
-?>
 //3
 <?php
 // view_api.php
